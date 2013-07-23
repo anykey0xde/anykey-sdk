@@ -87,6 +87,11 @@ static void _anytimer(TimerId timer, int32_t ms, anytimer_func f, TIMER_MATCH_BE
     } 
   }
 
+	// since the prescale is configured as a counter, prescaler must be
+	// decremented by 1 (counting from 0..1 == dividing by 2)
+
+	prescale = prescale - 1;
+
   Timer_Enable(timer, true);
   Timer_SetPrescale(timer, prescale);
   Timer_SetMatchValue(timer, 0, match);
