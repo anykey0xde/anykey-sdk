@@ -37,12 +37,16 @@ static uint32_t _abs_diff(uint32_t a, uint32_t b) {
     return a-b;
   return b-a;
 }
+// timerfreq = clockIn / (prescale * comp)
+// 1 / x ms = (72 000 / ms) / (prescale * comp)
+// 1 = xms * (72 000 / ms) / (prescale * comp)
+// prescale * comp = x * 72 000
 
 static void _anytimer(TimerId timer, int32_t ms, anytimer_func f, TIMER_MATCH_BEHAVIOUR b) {
  // 72 000 000 / s
   // 72 000 / ms
-  // 65535
-  // 2147483647
+  // 65535 = 2^16
+  // 2147483647 = 2^32
   uint32_t prescale;
   uint32_t match;
   uint32_t actual;
