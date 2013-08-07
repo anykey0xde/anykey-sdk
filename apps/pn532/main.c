@@ -51,22 +51,22 @@ void main () {
 	if (err) status = 0x100 + err;
 	else status = (firmwareVersion >> 0) & 0xff;
 	return;
-*/
 
 	int count = 1;
 	err = PN532_ListCards(&count, PN532_Mod_TypeA106kbps);
 	if (err) status = 0x100 + err;
 	else status = count;
 	return;
+*/
 
-	while (1) {
-		sleep(10000000);
-		int count = 2;
-		err = PN532_ListCards(&count, PN532_Mod_TypeA106kbps);
-		if (err) status = 0x100 + err;
-		else status = count;
-		break;
-	}
+	uint8_t errCode = 0;
+	bool fieldPresent = false;
+	uint8_t numTargets = 0;
+	err = PN532_GetGeneralStatus(&errCode, &fieldPresent, &numTargets);
+	if (err) status = 0x100 + err;
+	else status = errCode;
+
+
 }
 
 void systick() {

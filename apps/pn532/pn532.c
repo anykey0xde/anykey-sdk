@@ -12,16 +12,16 @@ I2C_STATUS PN532_I2C_WriteReadSync(uint8_t sendLen, uint8_t* sendData, uint8_t r
 
 I2C_State pn532I2CState;
 
-#define PN532_ADDRESSING_RETRIES 100
-#define PN532_READY_RETRIES 1000
-#define PN532_MAX_BUF_LEN 200
-#define PN532_ADDRESSING_RETRY_DELAY 10000
-#define PN532_READY_RETRY_DELAY 100000
-#define PN532_WAKEUP_DELAY 10000
-#define PN532_CMD_OUT_DELAY 100000
-#define PN532_ACK_IN_DELAY 100000
-#define PN532_DATA_IN_DELAY 1000000
-#define PN532_ACK_OUT_DELAY 100000
+#define PN532_MAX_BUF_LEN               200
+#define PN532_ADDRESSING_RETRIES         10
+#define PN532_READY_RETRIES            1000
+#define PN532_ADDRESSING_RETRY_DELAY  10000
+#define PN532_READY_RETRY_DELAY      100000
+#define PN532_WAKEUP_DELAY           100000
+#define PN532_CMD_OUT_DELAY          100000
+#define PN532_ACK_IN_DELAY           100000
+#define PN532_DATA_IN_DELAY        10000000
+#define PN532_ACK_OUT_DELAY          100000
 
 
 extern volatile uint8_t latestI2CState;
@@ -43,10 +43,16 @@ PN532_Error PN532_Init() {
 	return PN532_Err_OK;
 }
 
-PN532_Error PN532_SAMConfiguration() {
-	uint8_t cmd[] = {PN532_Cmd_SAMConfiguration, 1, 1, 0};
-	PN532_Error err = PN532_SendCommand(cmd, 4, NULL, NULL);
+PN532_Error PN532_GetGeneralStatus(uint8_t* errCode, bool* field, uint8_t* numTargets) {
+	uint8_t cmd = PN532_Cmd_GetGeneralStatus;
+	uint8_t responseLen = 12;
+	uint8_t response[responseLen];
+	PN532_Error err = PN532_SendCommand(&cmd, 1, response, &responseLen);
 	if (err != PN532_Err_OK) return err;
+	if (responseLen < 3) return PN532_Err_InvalidResponse;
+	if (errCode) *errCode = response[0];
+	if (field) *field = response[1] != 0;
+	if (numTargets) *numTargets = response[2];
 	return PN532_Err_OK;
 }
 
