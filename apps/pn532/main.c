@@ -41,11 +41,6 @@ void main () {
 	}
 /*
 	sleep(10000000);
-	err = PN532_SAMConfiguration();
-	if (err) {
-		status = 0x100 + err;
-		return;
-	}
 	uint32_t firmwareVersion;
 	err = PN532_GetFirmwareVersion(&firmwareVersion);
 	if (err) status = 0x100 + err;
@@ -58,14 +53,34 @@ void main () {
 	else status = count;
 	return;
 */
+	err = PN532_SAMConfiguration();
+	if (err) {
+		status = 0x100 + err;
+		return;
+	}	
+
+	err = PN532_SAMConfiguration();
+	if (err) {
+		status = 0x100 + err;
+		return;
+	}	
+
+	status = 0x1ff;
+
+	int count = 1;
+	err = PN532_ListCards(&count, PN532_Mod_TypeA106kbps);
+	if (err) status = 0x100 + err;
+	any_gpio_write (LED_PORT, LED_PIN, count > 0);
+	return;
 
 	uint8_t errCode = 0;
 	bool fieldPresent = false;
 	uint8_t numTargets = 0;
 	err = PN532_GetGeneralStatus(&errCode, &fieldPresent, &numTargets);
 	if (err) status = 0x100 + err;
-	else status = errCode;
-
+	else if (errCode) status = 0x80 + errCode;
+	else if (numTargets) status = 0x180 + numTargets;
+	else status = fieldPresent ? 0x1ff : 0x001;
 
 }
 
@@ -78,5 +93,5 @@ void systick() {
 	int bit = counter / phaseLen;
 	int phase = counter % phaseLen;
 	int phaseRef = (bit < 9) ? ((status & (0x100 >> bit)) ? onPhaseLen : offPhaseLen) : 0;
-	any_gpio_write (LED_PORT, LED_PIN, phase < phaseRef);
+//	any_gpio_write (LED_PORT, LED_PIN, phase < phaseRef);
 }

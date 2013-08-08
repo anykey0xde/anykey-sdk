@@ -17,10 +17,10 @@ I2C_State pn532I2CState;
 #define PN532_READY_RETRIES            1000
 #define PN532_ADDRESSING_RETRY_DELAY  10000
 #define PN532_READY_RETRY_DELAY      100000
-#define PN532_WAKEUP_DELAY           100000
+#define PN532_WAKEUP_DELAY          1000000
 #define PN532_CMD_OUT_DELAY          100000
 #define PN532_ACK_IN_DELAY           100000
-#define PN532_DATA_IN_DELAY        10000000
+#define PN532_DATA_IN_DELAY         1000000
 #define PN532_ACK_OUT_DELAY          100000
 
 
@@ -33,14 +33,20 @@ void PN532_Sleep(uint32_t len) {
 
 PN532_Error PN532_Init() {
 	I2C_Init(I2C_MODE_STANDARD, &pn532I2CState); 
-
-/*
-	uint8_t cmd = PN532_Cmd_GetFirmwareVersion;	//Wake up by sending address
-	I2C_STATUS i2cErr = PN532_I2C_WriteReadSync(1, &cmd, 0, NULL);
-	if (i2cErr) return 0x10 + i2cErr;
-	PN532_Sleep(PN532_WAKEUP_DELAY);
-*/
 	return PN532_Err_OK;
+}
+
+PN532_Error PN532_SAMConfiguration() {
+	uint8_t crap[] = { /*0x55, 0x55, 0x00, 0x00, 0x00, 0x00, 0x00, 0xff, 0x03, 0xfd, 0xd4, 0x14, 0x01, 0x17,*/ 0x00, 0x00, 0xff, 0x03, 0xfd, 0xd4, 0x14, 0x01, 0x17, 0x00};
+	I2C_STATUS i2cErr = PN532_I2C_WriteReadSync(sizeof(crap), crap, 0, NULL);
+	if (i2cErr) return PN532_Err_Transport_Failure;
+	PN532_Sleep(PN532_WAKEUP_DELAY);
+	PN532_Error err = PN532_ReceiveAckFrame();
+	if (err) return err;
+	uint8_t ignoreDataLen = 4;
+	uint8_t ignoreData[ignoreDataLen];
+	err = PN532_ReceiveDataFrame(ignoreData, &ignoreDataLen);
+	return err;
 }
 
 PN532_Error PN532_GetGeneralStatus(uint8_t* errCode, bool* field, uint8_t* numTargets) {
@@ -72,25 +78,21 @@ PN532_Error PN532_ListCards(int* count, PN532_Modulation modulation) {
 	PN532_Error err = PN532_SendCommand(cmd, 3, response, &responseLen);
 	*count = 0;
 	if (err != PN532_Err_OK) return err;
-	if (responseLen < 3) return PN532_Err_InvalidResponse;
-	*count = 0x80 + responseLen; //response[2];
+	if (responseLen < 1) return PN532_Err_InvalidResponse;
+	*count = response[0];
 	return PN532_Err_OK;
 }
 
 PN532_Error PN532_SendCommand(uint8_t* data, uint16_t dataLen, uint8_t* response, uint8_t* responseLen) {
 
-	PN532_Sleep(PN532_CMD_OUT_DELAY);
 	PN532_Error err = PN532_SendCommandFrame(data, dataLen);
 	if (err) return 0x10 + err;
-	PN532_Sleep(PN532_ACK_IN_DELAY);
 	err = PN532_ReceiveAckFrame();
 	if (err) return 0x20 + err;
 
 	if (response && responseLen) {
-		PN532_Sleep(PN532_DATA_IN_DELAY);
 		err = PN532_ReceiveDataFrame(response, responseLen);
 		if (err) return 0x30 + err;
-		PN532_Sleep(PN532_ACK_OUT_DELAY);
 		err = PN532_SendAckFrame();
 		if (err) return 0x40 + err;
 	}
@@ -100,6 +102,7 @@ PN532_Error PN532_SendCommand(uint8_t* data, uint16_t dataLen, uint8_t* response
 
 
 PN532_Error PN532_SendCommandFrame(uint8_t* data, uint8_t dataLen) {
+	PN532_Sleep(PN532_CMD_OUT_DELAY);
 	uint8_t cmdFrameLen = dataLen+8;
 	if (cmdFrameLen > PN532_MAX_BUF_LEN) return PN532_Err_PayloadTooLong;
 	uint8_t buf[cmdFrameLen];
@@ -127,6 +130,7 @@ PN532_Error PN532_SendCommandFrame(uint8_t* data, uint8_t dataLen) {
 }
 
 PN532_Error PN532_ReceiveAckFrame() {
+	PN532_Sleep(PN532_ACK_IN_DELAY);
 	uint8_t buf[7];
 	uint32_t retry;
 	for (retry = 0; retry < PN532_READY_RETRIES; retry++) {
@@ -148,6 +152,7 @@ PN532_Error PN532_ReceiveAckFrame() {
 }
 
 PN532_Error PN532_ReceiveDataFrame(uint8_t* data, uint8_t* dataLen) {
+	PN532_Sleep(PN532_DATA_IN_DELAY);
 	uint32_t retry;
 	uint8_t buf[PN532_MAX_BUF_LEN];
 	for (retry = 0; retry < PN532_READY_RETRIES; retry++) {
@@ -175,6 +180,7 @@ PN532_Error PN532_ReceiveDataFrame(uint8_t* data, uint8_t* dataLen) {
 }
 
 PN532_Error PN532_SendAckFrame() {
+	PN532_Sleep(PN532_ACK_OUT_DELAY);
 	uint8_t buf[6] = { 0x00, 0x00, 0xff, 0x00, 0xff, 0x00};
 	I2C_STATUS i2cErr = PN532_I2C_WriteReadSync(6, buf, 0, NULL);
 	if (i2cErr) return 0x08 + i2cErr;//PN532_Err_Transport_Failure;

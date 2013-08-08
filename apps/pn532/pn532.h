@@ -71,6 +71,10 @@ typedef enum {
 @return OK on success or an error code on failure. */
 PN532_Error PN532_Init();
 
+/** sets up the SAM configuration to a usable state. 
+@return OK on success or an error code on failure. */
+PN532_Error PN532_SAMConfiguration();
+
 /** queries the chip's general status
 @param a pointer to return an error code. Pass NULL if not interested.
 @param a pointer to return if a field is presenet. Pass NULL if not interested.
